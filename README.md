@@ -2,14 +2,12 @@
 ✅ Flask 后端框架
 ✅ 文件上传（upload）
 ✅ SQLite 数据库存储
-
-
-👉 结论：你已经完成 MVP（Minimum Viable Product）
+✅ OCR（已接入 or 可接入）
+✅ 简单信息提取（regex）
 
 🟡 半完成（Level 2：核心AI能力）
 ✅ 基础查询（total）
-✅ OCR（已接入 or 可接入）
-✅ 简单信息提取（regex）
+
 ⚠️ OCR 识别准确率（还没优化）
 ⚠️ 信息提取（规则还很弱）
 ⚠️ 查询系统（仅 keyword）
