@@ -1,10 +1,18 @@
-from database.db import query_total
+from database.models import (
+    get_total_cost,
+    get_all_records,
+    get_monthly_cost,
+    get_cost_by_station
+)
 
-def handle_query(question):
-    q = question.lower()
+def query_total():
+    return {"total": get_total_cost()}
 
-    if "total" in q:
-        result = query_total()
-        return f"Total fuel cost: {round(result,2)} EUR"
+def query_all():
+    return get_all_records()
 
-    return "Query not supported"
+def query_monthly():
+    return get_monthly_cost()
+
+def query_by_station():
+    return get_cost_by_station()()

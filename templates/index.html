@@ -1,69 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fuel Tracker</title>
+    <title>Fuel AI Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 15px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>🚗 Fuel Tracker</h1>
+<h1>🚗 Fuel AI Dashboard</h1>
 
-<form method="POST">
-    <textarea name="fuel_text" rows="6" cols="50" placeholder="输入加油信息..."></textarea>
-    <br><br>
-    <button type="submit">提交</button>
-</form>
+<!-- 上传 -->
+<div class="card">
+    <h3>Upload Receipt</h3>
+    <input type="file" id="fileInput">
+    <button onclick="upload()">Upload</button>
+    <pre id="uploadResult"></pre>
+</div>
 
-<hr>
+<!-- 总油费 -->
+<div class="card">
+    <h3>Total Fuel Cost</h3>
+    <h2 id="total">Loading...</h2>
+</div>
 
-<h2>💰 总油费: {{ total }} EUR</h2>
+<!-- 每月图 -->
+<div class="card">
+    <h3>Monthly Cost</h3>
+    <canvas id="chart"></canvas>
+</div>
 
-{% if extracted %}
-<h3>📊 提取结果:</h3>
-<ul>
-    <li>加油站: {{ extracted.station }}</li>
-    <li>日期: {{ extracted.date }}</li>
-    <li>时间: {{ extracted.time }}</li>
-    <li>油类型: {{ extracted.fuel_type }}</li>
-    <li>金额: {{ extracted.amount }}</li>
-    <li>地点: {{ extracted.location }}</li>
-</ul>
-{% endif %}
-<h2>📊 每月油费</h2>
+<!-- 记录 -->
+<div class="card">
+    <h3>Recent Records</h3>
+    <ul id="records"></ul>
+</div>
 
-<table border="1">
-    <tr>
-        <th>月份</th>
-        <th>总金额 (EUR)</th>
-    </tr>
-    {% for m in monthly %}
-    <tr>
-        <td>{{ m[0] }}</td>
-        <td>{{ "%.2f"|format(m[1]) }}</td>
-    </tr>
-    {% endfor %}
-</table>
-<h2>📜 历史记录</h2>
+<script>
+async function loadTotal() {
+    const res = await fetch("/total");
+    const data = await res.json();
+    document.getElementById("total").innerText = data.total + " EUR";
+}
 
-<table border="1">
-    <tr>
-        <th>加油站</th>
-        <th>日期</th>
-        <th>时间</th>
-        <th>类型</th>
-        <th>金额</th>
-        <th>地点</th>
-    </tr>
+async function loadMonthly() {
+    const res = await fetch("/monthly");
+    const data = await res.json();
 
-    {% for r in records %}
-    <tr>
-        <td>{{ r[0] }}</td>
-        <td>{{ r[1] }}</td>
-        <td>{{ r[2] }}</td>
-        <td>{{ r[3] }}</td>
-        <td>{{ r[4] }}</td>
-        <td>{{ r[5] }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    const labels = data.map(x => x.month);
+    const values = data.map(x => x.total);
+
+    new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Fuel Cost",
+                data: values
+            }]
+        }
+    });
+}
+
+async function loadRecords() {
+    const res = await fetch("/records");
+    const data = await res.json();
+
+    const list = document.getElementById("records");
+    list.innerHTML = "";
+
+    data.slice(0, 5).forEach(r => {
+        const li = document.createElement("li");
+        li.innerText = `${r.date} - ${r.station} - ${r.amount} EUR`;
+        list.appendChild(li);
+    });
+}
+
+async function upload() {
+    const file = document.getElementById("fileInput").files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    document.getElementById("uploadResult").innerText = JSON.stringify(data, null, 2);
+
+    loadAll();
+}
+
+function loadAll() {
+    loadTotal();
+    loadMonthly();
+    loadRecords();
+}
+
+loadAll();
+</script>
+
 </body>
 </html>
