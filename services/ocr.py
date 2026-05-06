@@ -21,7 +21,7 @@ def image_processing(image_path):
     gray = cv2.medianBlur(gray, 3)
 
     # 二值化（核心）
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(gray,150, 255, cv2.THRESH_BINARY)
 
     return thresh
 
@@ -48,13 +48,13 @@ def extract_text_from_image(image_path):
         print("OCR Error:", e)
         return ""
 
-
+"if the "
 # ---------------------------
 # 测试
 # ---------------------------
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.dirname(__file__))
-    image_path = os.path.join(base_dir, "data", "3.jpg")
+    image_path = os.path.join(base_dir, "data/bad", "4.jpg")
 
     text = extract_text_from_image(image_path)
     print("📄 Extracted Text:\n", text)

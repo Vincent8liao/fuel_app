@@ -1,128 +1,819 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuel AI Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --bg: #f4f6f8;
+            --surface: #ffffff;
+            --text: #1f2933;
+            --muted: #667085;
+            --border: #d9e2ec;
+            --primary: #0f766e;
+            --primary-dark: #115e59;
+            --warning: #b45309;
+            --success: #15803d;
+            --danger: #b91c1c;
+            --info: #2563eb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial;
-            margin: 40px;
-            background: #f5f5f5;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
         }
-        h1 {
-            color: #333;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        button {
-            padding: 10px 15px;
-            background: #007BFF;
+
+        header {
+            background: #102a43;
             color: white;
-            border: none;
-            border-radius: 5px;
+            padding: 24px 32px;
+        }
+
+        header h1 {
+            margin: 0 0 6px;
+            font-size: 28px;
+            letter-spacing: 0;
+        }
+
+        header p {
+            margin: 0;
+            color: #d9e2ec;
+        }
+
+        main {
+            width: min(1180px, calc(100% - 32px));
+            margin: 24px auto 40px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 18px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .card h2,
+        .card h3 {
+            margin: 0 0 14px;
+            font-size: 18px;
+        }
+
+        .metric {
+            min-height: 112px;
+        }
+
+        .metric span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 28px;
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .step {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8fafc;
+        }
+
+        .step strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .step span {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .step.active {
+            border-color: var(--primary);
+            background: #ecfdf5;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: minmax(160px, 220px) minmax(160px, 1fr) auto auto;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 14px;
+        }
+
+        button {
+            min-height: 40px;
+            padding: 0 14px;
+            border: 0;
+            border-radius: 6px;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button.secondary {
+            background: #e5e7eb;
+            color: var(--text);
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        button.danger:hover {
+            background: #991b1b;
+        }
+
+        input {
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+        }
+
+        label {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .form-grid .wide {
+            grid-column: 1 / -1;
+        }
+
+        .status {
+            margin: 14px 0;
+            padding: 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            border: 1px solid #bfdbfe;
+            font-size: 14px;
+        }
+
+        .status.warning {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: var(--warning);
+        }
+
+        .status.success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: var(--success);
+        }
+
+        .status.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: var(--danger);
+        }
+
+        .quality-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin: 12px 0 0;
+        }
+
+        .quality-chip {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            background: #f8fafc;
+            font-size: 12px;
+        }
+
+        .quality-chip strong {
+            display: block;
+            color: var(--text);
+            margin-bottom: 3px;
+        }
+
+        .quality-chip.good {
+            border-color: #86efac;
+            background: #f0fdf4;
+        }
+
+        .quality-chip.warn {
+            border-color: #fde68a;
+            background: #fffbeb;
+        }
+
+        .query-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .query-answer {
+            margin-top: 10px;
+            color: var(--info);
+            font-size: 14px;
+        }
+
+        .ocr-text {
+            max-height: 160px;
+            overflow: auto;
+            margin: 14px 0 0;
+            padding: 12px;
+            background: #111827;
+            color: #f9fafb;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+
+        .chart-wrap {
+            height: 320px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        td button {
+            min-height: 30px;
+            padding: 0 10px;
+            font-size: 12px;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 20px 0 4px;
+        }
+
+        @media (max-width: 840px) {
+            header {
+                padding: 20px 16px;
+            }
+
+            .grid,
+            .stats-grid,
+            .flow,
+            .form-grid,
+            .filters,
+            .query-row,
+            .quality-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric {
+                min-height: auto;
+            }
         }
     </style>
 </head>
 
 <body>
+<header>
+    <h1>Fuel AI Dashboard</h1>
+    <p>OCR recognition, manual correction, storage, and monthly fuel cost analytics.</p>
+</header>
 
-<h1>🚗 Fuel AI Dashboard</h1>
+<main>
+    <section class="stats-grid">
+        <div class="card metric">
+            <span>Total Fuel Cost</span>
+            <strong id="total">0.00 EUR</strong>
+        </div>
+        <div class="card metric">
+            <span>Saved Records</span>
+            <strong id="recordCount">0</strong>
+        </div>
+        <div class="card metric">
+            <span>Latest Month</span>
+            <strong id="latestMonth">No data</strong>
+        </div>
+    </section>
 
-<!-- 上传 -->
-<div class="card">
-    <h3>Upload Receipt</h3>
-    <input type="file" id="fileInput">
-    <button onclick="upload()">Upload</button>
-    <pre id="uploadResult"></pre>
-</div>
+    <section class="grid">
+        <div class="card">
+            <h2>Receipt Workflow</h2>
+            <div class="flow">
+                <div class="step active" id="stepUpload">
+                    <strong>1. Upload</strong>
+                    <span>Send a receipt image to OCR.</span>
+                </div>
+                <div class="step" id="stepReview">
+                    <strong>2. Review</strong>
+                    <span>Edit OCR results or fill manually.</span>
+                </div>
+                <div class="step" id="stepSave">
+                    <strong>3. Save</strong>
+                    <span>Store clean data for analytics.</span>
+                </div>
+            </div>
 
-<!-- 总油费 -->
-<div class="card">
-    <h3>Total Fuel Cost</h3>
-    <h2 id="total">Loading...</h2>
-</div>
+            <div class="actions">
+                <input type="file" id="fileInput" accept="image/*">
+                <button id="uploadButton" onclick="uploadReceipt()">Upload & Recognize</button>
+                <button class="secondary" onclick="startManualEntry()">Manual Entry</button>
+            </div>
 
-<!-- 每月图 -->
-<div class="card">
-    <h3>Monthly Cost</h3>
-    <canvas id="chart"></canvas>
-</div>
+            <div id="status" class="status">Upload a receipt or start manual entry.</div>
+            <div id="qualityPanel" class="quality-grid" hidden></div>
+            <pre id="ocrText" class="ocr-text" hidden></pre>
 
-<!-- 记录 -->
-<div class="card">
-    <h3>Recent Records</h3>
-    <ul id="records"></ul>
-</div>
+            <form id="recordForm" onsubmit="saveRecord(event)">
+                <h3>Receipt Details</h3>
+                <input id="recordId" name="recordId" type="hidden">
+                <div class="form-grid">
+                    <label>Station
+                        <input id="station" name="station" placeholder="Shell, Aral, Esso">
+                    </label>
+                    <label>Fuel Type
+                        <input id="fuel_type" name="fuel_type" placeholder="Diesel, Super E10">
+                    </label>
+                    <label>Date
+                        <input id="date" name="date" type="date" required>
+                    </label>
+                    <label>Time
+                        <input id="time" name="time" type="time">
+                    </label>
+                    <label>Amount EUR
+                        <input id="amount" name="amount" type="number" step="0.01" min="0" required>
+                    </label>
+                    <label>Postcode
+                        <input id="postcode" name="postcode" inputmode="numeric" placeholder="10115">
+                    </label>
+                    <label class="wide">Street
+                        <input id="street" name="street" placeholder="Example Str. 1">
+                    </label>
+                    <label>City
+                        <input id="city" name="city" placeholder="Berlin">
+                    </label>
+                </div>
+                <div class="actions" style="margin-top: 14px;">
+                    <button id="saveButton" type="submit">Save Record</button>
+                    <button id="duplicateButton" type="button" class="secondary" onclick="saveDuplicate()" hidden>Save Anyway</button>
+                    <button type="button" class="secondary" onclick="clearForm()">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Monthly Fuel Cost</h2>
+            <div class="query-row">
+                <input id="questionInput" placeholder="Ask: total this month, monthly Shell, records 2026-05">
+                <button onclick="askQuestion()">Ask</button>
+            </div>
+            <div id="queryAnswer" class="query-answer"></div>
+            <div class="chart-wrap">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <section class="card" style="margin-top: 18px;">
+        <h2>Recent Records</h2>
+        <div class="filters">
+            <label>Month
+                <input id="filterMonth" type="month">
+            </label>
+            <label>Station
+                <input id="filterStation" placeholder="Shell, Aral, Esso">
+            </label>
+            <button onclick="applyFilters()">Apply</button>
+            <button class="secondary" onclick="resetFilters()">Reset</button>
+        </div>
+        <div id="records"></div>
+    </section>
+</main>
 
 <script>
-async function loadTotal() {
-    const res = await fetch("/total");
-    const data = await res.json();
-    document.getElementById("total").innerText = data.total + " EUR";
+let monthlyChart;
+let loadedRecords = [];
+let allowDuplicateNextSave = false;
+
+const fields = ["station", "fuel_type", "date", "time", "amount", "postcode", "street", "city"];
+
+function setStatus(message, type = "") {
+    const status = document.getElementById("status");
+    status.className = `status ${type}`.trim();
+    status.textContent = message;
 }
 
-async function loadMonthly() {
-    const res = await fetch("/monthly");
-    const data = await res.json();
-
-    const labels = data.map(x => x.month);
-    const values = data.map(x => x.total);
-
-    new Chart(document.getElementById("chart"), {
-        type: "line",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Fuel Cost",
-                data: values
-            }]
-        }
+function setStep(activeStep) {
+    ["stepUpload", "stepReview", "stepSave"].forEach(id => {
+        document.getElementById(id).classList.toggle("active", id === activeStep);
     });
 }
 
-async function loadRecords() {
-    const res = await fetch("/records");
-    const data = await res.json();
-
-    const list = document.getElementById("records");
-    list.innerHTML = "";
-
-    data.slice(0, 5).forEach(r => {
-        const li = document.createElement("li");
-        li.innerText = `${r.date} - ${r.station} - ${r.amount} EUR`;
-        list.appendChild(li);
+function fillForm(data = {}) {
+    document.getElementById("recordId").value = data.id ?? "";
+    fields.forEach(field => {
+        document.getElementById(field).value = data[field] ?? "";
     });
+    document.getElementById("saveButton").textContent = data.id ? "Update Record" : "Save Record";
+    allowDuplicateNextSave = false;
+    document.getElementById("duplicateButton").hidden = true;
 }
 
-async function upload() {
+function getFormData() {
+    return fields.reduce((payload, field) => {
+        payload[field] = document.getElementById(field).value.trim();
+        return payload;
+    }, {});
+}
+
+function clearForm() {
+    fillForm();
+    document.getElementById("ocrText").hidden = true;
+    document.getElementById("ocrText").textContent = "";
+    document.getElementById("qualityPanel").hidden = true;
+    document.getElementById("qualityPanel").innerHTML = "";
+    setStep("stepUpload");
+    setStatus("Upload a receipt or start manual entry.");
+}
+
+function startManualEntry() {
+    clearForm();
+    setStep("stepReview");
+    setStatus("Manual mode is ready. Fill the required date and amount, then save.", "warning");
+}
+
+async function uploadReceipt() {
     const file = document.getElementById("fileInput").files[0];
+    if (!file) {
+        setStatus("Please choose a receipt image first.", "error");
+        return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
+
+    setStep("stepUpload");
+    setStatus("Running OCR and extracting receipt fields...");
 
     const res = await fetch("/upload", {
         method: "POST",
         body: formData
     });
 
-    const data = await res.json();
-    document.getElementById("uploadResult").innerText = JSON.stringify(data, null, 2);
+    const result = await res.json();
+    if (!res.ok) {
+        setStatus(result.error || "Upload failed.", "error");
+        return;
+    }
 
-    loadAll();
+    fillForm(result.data);
+    setStep("stepReview");
+
+    const ocrText = document.getElementById("ocrText");
+    ocrText.textContent = result.ocr_text || "No OCR text was extracted.";
+    ocrText.hidden = false;
+
+    const quality = result.quality || {};
+    renderQuality(quality.field_scores || {});
+    const percent = Math.round((quality.confidence || 0) * 100);
+    if (quality.needs_review) {
+        const missing = (quality.missing_fields || []).join(", ") || "unknown fields";
+        setStatus(`OCR confidence is ${percent}%. Please review or manually fill: ${missing}.`, "warning");
+    } else {
+        setStatus(`OCR confidence is ${percent}%. Review the fields and save when ready.`, "success");
+    }
 }
 
-function loadAll() {
-    loadTotal();
-    loadMonthly();
-    loadRecords();
+function renderQuality(scores) {
+    const panel = document.getElementById("qualityPanel");
+    const labels = {
+        station: "Station",
+        date: "Date",
+        time: "Time",
+        fuel_type: "Fuel",
+        amount: "Amount",
+        city: "City"
+    };
+
+    panel.innerHTML = Object.entries(labels).map(([field, label]) => {
+        const score = Math.round(Number(scores[field] || 0) * 100);
+        const tone = score >= 70 ? "good" : "warn";
+        return `<div class="quality-chip ${tone}"><strong>${label}</strong>${score}% confidence</div>`;
+    }).join("");
+    panel.hidden = false;
+}
+
+async function saveRecord(event) {
+    event.preventDefault();
+    await submitRecord(false);
+}
+
+async function saveDuplicate() {
+    await submitRecord(true);
+}
+
+async function submitRecord(allowDuplicate) {
+    setStep("stepSave");
+    setStatus("Saving the verified receipt data...");
+
+    const recordId = document.getElementById("recordId").value;
+    const payload = getFormData();
+    payload.allow_duplicate = allowDuplicate || allowDuplicateNextSave;
+
+    const res = await fetch(recordId ? `/records/${recordId}` : "/save", {
+        method: recordId ? "PUT" : "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+    if (res.status === 409 && result.duplicate) {
+        allowDuplicateNextSave = true;
+        document.getElementById("duplicateButton").hidden = false;
+        const duplicateText = (result.duplicates || [])
+            .map(item => `${item.date} ${item.station || "Unknown"} ${Number(item.amount || 0).toFixed(2)} EUR`)
+            .join("; ");
+        setStep("stepReview");
+        setStatus(`Possible duplicate found: ${duplicateText}. Review it or save anyway.`, "warning");
+        return;
+    }
+
+    if (!res.ok) {
+        const errors = result.errors ? Object.values(result.errors).join(" ") : "Save failed.";
+        setStep("stepReview");
+        setStatus(errors, "error");
+        return;
+    }
+
+    setStatus("Record saved. Dashboard data has been refreshed.", "success");
+    fillForm();
+    document.getElementById("ocrText").hidden = true;
+    document.getElementById("ocrText").textContent = "";
+    document.getElementById("qualityPanel").hidden = true;
+    document.getElementById("qualityPanel").innerHTML = "";
+    await loadAll();
+}
+
+async function loadTotal() {
+    const res = await fetch(`/total${filterQuery()}`);
+    const data = await res.json();
+    document.getElementById("total").textContent = `${Number(data.total || 0).toFixed(2)} EUR`;
+}
+
+async function loadMonthly() {
+    const station = document.getElementById("filterStation")?.value.trim();
+    const res = await fetch(`/monthly${station ? `?station=${encodeURIComponent(station)}` : ""}`);
+    const data = await res.json();
+    const labels = data.map(item => item.month);
+    const values = data.map(item => Number(item.total || 0));
+
+    document.getElementById("latestMonth").textContent = labels.length
+        ? `${labels[labels.length - 1]}: ${values[values.length - 1].toFixed(2)} EUR`
+        : "No data";
+
+    if (monthlyChart) {
+        monthlyChart.destroy();
+    }
+
+    monthlyChart = new Chart(document.getElementById("monthlyChart"), {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [{
+                label: "Monthly Fuel Cost (EUR)",
+                data: values,
+                backgroundColor: "#0f766e",
+                borderColor: "#115e59",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+async function loadRecords() {
+    const res = await fetch(`/records${filterQuery()}`);
+    const data = await res.json();
+    loadedRecords = data;
+    const records = document.getElementById("records");
+    document.getElementById("recordCount").textContent = data.length;
+
+    if (!data.length) {
+        records.innerHTML = '<div class="empty">No records saved yet.</div>';
+        return;
+    }
+
+    const rows = data.slice(0, 8).map(record => `
+        <tr>
+            <td>${escapeHtml(record.date || "")}</td>
+            <td>${escapeHtml(record.station || "Unknown")}</td>
+            <td>${escapeHtml(record.fuel_type || "")}</td>
+            <td>${Number(record.amount || 0).toFixed(2)} EUR</td>
+            <td>${escapeHtml([record.postcode, record.city].filter(Boolean).join(" "))}</td>
+            <td>
+                <div class="actions">
+                    <button class="secondary" onclick="editRecord(${record.id})">Edit</button>
+                    <button class="danger" onclick="deleteRecord(${record.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join("");
+
+    records.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Station</th>
+                    <th>Fuel</th>
+                    <th>Amount</th>
+                    <th>Location</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+}
+
+function editRecord(id) {
+    const record = loadedRecords.find(item => item.id === id);
+    if (!record) {
+        setStatus("Record was not found in the current filtered table.", "error");
+        return;
+    }
+
+    fillForm(record);
+    setStep("stepReview");
+    setStatus("Editing an existing record. Update the fields and save.", "warning");
+    window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+async function deleteRecord(id) {
+    const record = loadedRecords.find(item => item.id === id);
+    const label = record
+        ? `${record.date || "No date"} ${record.station || "Unknown"} ${Number(record.amount || 0).toFixed(2)} EUR`
+        : `record #${id}`;
+
+    if (!window.confirm(`Delete ${label}?`)) {
+        return;
+    }
+
+    const res = await fetch(`/records/${id}`, {
+        method: "DELETE"
+    });
+
+    const result = await res.json();
+    if (!res.ok) {
+        setStatus(result.error || "Delete failed.", "error");
+        return;
+    }
+
+    if (document.getElementById("recordId").value === String(id)) {
+        clearForm();
+    }
+    setStatus("Record deleted. Dashboard data has been refreshed.", "success");
+    await loadAll();
+}
+
+function filterQuery() {
+    const params = new URLSearchParams();
+    const month = document.getElementById("filterMonth")?.value.trim();
+    const station = document.getElementById("filterStation")?.value.trim();
+    if (month) {
+        params.set("month", month);
+    }
+    if (station) {
+        params.set("station", station);
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+}
+
+async function applyFilters() {
+    await loadAll();
+}
+
+async function resetFilters() {
+    document.getElementById("filterMonth").value = "";
+    document.getElementById("filterStation").value = "";
+    await loadAll();
+}
+
+async function askQuestion() {
+    const input = document.getElementById("questionInput");
+    const answer = document.getElementById("queryAnswer");
+    const question = input.value.trim();
+    if (!question) {
+        answer.textContent = "Type a question first.";
+        return;
+    }
+
+    answer.textContent = "Querying saved fuel data...";
+    const res = await fetch("/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({question})
+    });
+    const result = await res.json();
+    answer.textContent = result.answer || "No answer available.";
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    }[char]));
+}
+
+async function loadAll() {
+    await Promise.all([loadTotal(), loadMonthly(), loadRecords()]);
 }
 
 loadAll();
 </script>
-
 </body>
 </html>

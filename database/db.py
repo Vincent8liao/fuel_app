@@ -1,9 +1,9 @@
 import sqlite3
 import os
-
-DB_PATH = os.path.join("data", "fuel.db")
+from config import DB_PATH
 
 def get_connection():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     return sqlite3.connect(DB_PATH)
 
 def init_db():
