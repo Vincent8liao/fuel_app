@@ -1,10 +1,13 @@
 from database.db import get_connection
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 RECORD_COLUMNS = [
-    "id", "station", "date", "time", "fuel_type",
+    "id", "user_id", "username", "station", "date", "time", "fuel_type",
     "amount", "postcode", "street", "city"
 ]
+
+USER_COLUMNS = ["id", "username", "is_admin", "is_active", "created_at"]
 
 
 # ---------------------------
@@ -16,10 +19,11 @@ def insert_record(data):
 
     cursor.execute("""
     INSERT INTO fuel_records (
-        station, date, time, fuel_type, amount,
+        user_id, station, date, time, fuel_type, amount,
         postcode, street, city
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
+        data.get("user_id"),
         data.get("station"),
         data.get("date"),
         data.get("time"),
@@ -42,10 +46,11 @@ def update_record(record_id, data):
 
     cursor.execute("""
     UPDATE fuel_records
-    SET station = ?, date = ?, time = ?, fuel_type = ?, amount = ?,
+    SET user_id = ?, station = ?, date = ?, time = ?, fuel_type = ?, amount = ?,
         postcode = ?, street = ?, city = ?
     WHERE id = ?
     """, (
+        data.get("user_id"),
         data.get("station"),
         data.get("date"),
         data.get("time"),
@@ -75,6 +80,124 @@ def delete_record(record_id):
     return deleted > 0
 
 
+def get_user_by_username(username):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, username, password_hash, is_admin, is_active, created_at
+    FROM users
+    WHERE LOWER(username) = LOWER(?)
+    """, (username,))
+
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "username": row[1],
+        "password_hash": row[2],
+        "is_admin": bool(row[3]),
+        "is_active": bool(row[4]),
+        "created_at": row[5]
+    }
+
+
+def authenticate_user(username, password):
+    user = get_user_by_username(username)
+    if not user or not user["is_active"]:
+        return None
+    if not check_password_hash(user["password_hash"], password):
+        return None
+
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "is_admin": user["is_admin"],
+        "is_active": user["is_active"]
+    }
+
+
+def get_user_by_id(user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, username, is_admin, is_active, created_at
+    FROM users
+    WHERE id = ?
+    """, (user_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+    return dict(zip(USER_COLUMNS, row)) if row else None
+
+
+def list_users():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, username, is_admin, is_active, created_at
+    FROM users
+    ORDER BY username ASC
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(zip(USER_COLUMNS, row)) for row in rows]
+
+
+def create_user(username, password, is_admin=False):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO users (username, password_hash, is_admin, is_active)
+    VALUES (?, ?, ?, 1)
+    """, (username, generate_password_hash(password), 1 if is_admin else 0))
+
+    conn.commit()
+    user_id = cursor.lastrowid
+    conn.close()
+    return user_id
+
+
+def update_user(user_id, data):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    fields = []
+    values = []
+    if "password" in data and data.get("password"):
+        fields.append("password_hash = ?")
+        values.append(generate_password_hash(data["password"]))
+    if "is_admin" in data:
+        fields.append("is_admin = ?")
+        values.append(1 if data.get("is_admin") else 0)
+    if "is_active" in data:
+        fields.append("is_active = ?")
+        values.append(1 if data.get("is_active") else 0)
+
+    if not fields:
+        conn.close()
+        return False
+
+    values.append(user_id)
+    cursor.execute(f"""
+    UPDATE users
+    SET {", ".join(fields)}
+    WHERE id = ?
+    """, values)
+
+    conn.commit()
+    updated = cursor.rowcount
+    conn.close()
+    return updated > 0
+
+
 def _to_float(value):
     if value in (None, ""):
         return None
@@ -93,7 +216,11 @@ def _build_filters(filters):
 
     month = filters.get("month")
     station = filters.get("station")
+    user_id = filters.get("user_id")
 
+    if user_id:
+        clauses.append("fuel_records.user_id = ?")
+        values.append(user_id)
     if month:
         clauses.append("substr(date, 1, 7) = ?")
         values.append(month)
@@ -126,9 +253,11 @@ def get_all_records(filters=None):
 
     where, values = _build_filters(filters)
     cursor.execute(f"""
-    SELECT id, station, date, time, fuel_type, amount,
+    SELECT fuel_records.id, fuel_records.user_id, users.username,
+           station, date, time, fuel_type, amount,
            postcode, street, city
     FROM fuel_records
+    LEFT JOIN users ON users.id = fuel_records.user_id
     {where}
     ORDER BY date DESC, time DESC
     """, values)
@@ -168,16 +297,18 @@ def get_monthly_cost(filters=None):
 # ---------------------------
 # BY STATION
 # ---------------------------
-def get_cost_by_station():
+def get_cost_by_station(filters=None):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    where, values = _build_filters(filters)
+    cursor.execute(f"""
     SELECT station, SUM(amount)
     FROM fuel_records
+    {where}
     GROUP BY station
     ORDER BY SUM(amount) DESC
-    """)
+    """, values)
 
     rows = cursor.fetchall()
     conn.close()
@@ -193,19 +324,27 @@ def find_duplicate_records(data, exclude_id=None):
     cursor = conn.cursor()
 
     values = [data.get("date"), _to_float(data.get("amount"))]
+    user_id = data.get("user_id")
     exclude_clause = ""
+    user_clause = ""
+    if user_id:
+        user_clause = "AND fuel_records.user_id = ?"
+        values.append(user_id)
     if exclude_id:
-        exclude_clause = "AND id != ?"
+        exclude_clause = "AND fuel_records.id != ?"
         values.append(exclude_id)
 
     cursor.execute(f"""
-    SELECT id, station, date, time, fuel_type, amount,
+    SELECT fuel_records.id, fuel_records.user_id, users.username,
+           station, date, time, fuel_type, amount,
            postcode, street, city
     FROM fuel_records
+    LEFT JOIN users ON users.id = fuel_records.user_id
     WHERE date = ?
       AND ABS(amount - ?) < 0.01
+      {user_clause}
       {exclude_clause}
-    ORDER BY id DESC
+    ORDER BY fuel_records.id DESC
     """, values)
 
     rows = cursor.fetchall()

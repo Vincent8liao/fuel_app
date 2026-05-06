@@ -29,6 +29,9 @@ The project is currently an MVP for document intelligence and personal fuel expe
 - Show monthly fuel cost chart.
 - Show recent records.
 - Ask simple natural-language questions against saved data.
+- Log in with separate user accounts.
+- Keep each user's fuel records isolated.
+- Manage accounts from an administrator panel.
 
 ## Tech Stack
 
@@ -55,6 +58,9 @@ fuel_app/
 |-- database/
 |   |-- db.py                    # Database connection and table setup
 |   `-- models.py                # CRUD and analytics queries
+|-- fuel/
+|   |-- helpers.py               # Fuel record validation, OCR quality, query parsing
+|   `-- routes.py                # Fuel upload, records, analytics, query routes
 |-- processing/
 |   |-- cleaner.py               # Text cleaning utilities
 |   `-- parser.py                # Parser experiments
@@ -67,6 +73,9 @@ fuel_app/
 |   `-- query_service.py         # Query service wrapper
 |-- templates/
 |   `-- index.html               # Dashboard frontend
+|-- users/
+|   |-- auth.py                  # Current user, permissions, auth decorators
+|   `-- routes.py                # Login, logout, admin user management routes
 `-- uploads/                     # Uploaded receipt images
 ```
 
@@ -131,13 +140,34 @@ http://127.0.0.1:5001/
 
 ## Dashboard Workflow
 
-1. Upload a receipt image.
-2. OCR extracts text and the backend parses structured fields.
-3. The dashboard displays extracted values and field confidence scores.
-4. If OCR quality is low, manually correct or fill the missing fields.
-5. Save the verified record.
-6. If a similar record already exists, review the duplicate warning or choose `Save Anyway`.
-7. Monthly chart, total cost, and recent records refresh automatically.
+1. Log in with a user account.
+2. Upload a receipt image.
+3. OCR extracts text and the backend parses structured fields.
+4. The dashboard displays extracted values and field confidence scores.
+5. If OCR quality is low, manually correct or fill the missing fields.
+6. Save the verified record.
+7. If a similar record already exists, review the duplicate warning or choose `Save Anyway`.
+8. Monthly chart, total cost, and recent records refresh automatically.
+
+## User Accounts
+
+The application creates a default administrator account when the database is initialized:
+
+```text
+username: admin
+password: admin123
+```
+
+Change this password after first login.
+
+Account behavior:
+
+- Normal users can only view, create, edit, and delete their own fuel records.
+- Administrators can create users.
+- Administrators can reset user passwords.
+- Administrators can activate or deactivate accounts.
+- Administrators can grant or remove administrator rights for other users.
+- Existing records are assigned to the default `admin` account during migration.
 
 ## API Endpoints
 
@@ -148,6 +178,67 @@ GET /
 ```
 
 Returns the dashboard page.
+
+### Login
+
+```http
+POST /auth/login
+```
+
+JSON body:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+### Logout
+
+```http
+POST /auth/logout
+```
+
+### Current User
+
+```http
+GET /auth/status
+```
+
+### List Users
+
+```http
+GET /admin/users
+```
+
+Administrator only.
+
+### Create User
+
+```http
+POST /admin/users
+```
+
+Administrator only.
+
+JSON body:
+
+```json
+{
+  "username": "driver1",
+  "password": "secret123",
+  "is_admin": false
+}
+```
+
+### Update User
+
+```http
+PUT /admin/users/<user_id>
+```
+
+Administrator only. Supports password reset, activation, and role changes.
 
 ### Upload Receipt
 
@@ -333,7 +424,6 @@ CREATE TABLE IF NOT EXISTS fuel_records (
 - Field extraction is regex-based and may fail on unfamiliar receipt formats.
 - Natural-language query support is rule-based and limited.
 - Duplicate detection currently uses `date + amount`, so it is useful but not perfect.
-- No user authentication yet.
 - No automated test suite yet.
 
 ## Recommended Next Steps

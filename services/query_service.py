@@ -14,5 +14,5 @@ def query_all(filters=None):
 def query_monthly(filters=None):
     return get_monthly_cost(filters)
 
-def query_by_station():
-    return get_cost_by_station()
+def query_by_station(filters=None):
+    return get_cost_by_station(filters)
